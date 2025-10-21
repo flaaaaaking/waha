@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>D‑Day Stream · 小纪念日流（精简前端·Notion嵌入版）</title>
+<title>D‑Day Stream · 小纪念日流</title>
 <style>
   :root{
-    /* Light default tokens */
+    /* Light (default tokens) */
     --bg:#F7F7F9; --panel:#FFFFFF; --text:#1A1D23; --muted:#6B7380; --line:#E6E8EE;
     --primary:#6AA7FF; --accent:#E9C77B; --ring: rgba(106,167,255,.35);
   }
@@ -31,7 +31,7 @@
   .btn:active{transform:translateY(1px)}
   .hint{color:var(--muted); font-size:12px}
   .toolbar{display:flex; gap:8px; align-items:center}
-  .toolbar .field{min-width:200px}
+  .toolbar .field{min-width:160px}
 
   .grid{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:14px}
   @media (max-width:1000px){.grid{grid-template-columns:repeat(2,1fr)}}
@@ -63,10 +63,16 @@
 
   .footer{display:flex; justify-content:flex-end; gap:10px; margin-top:12px}
 
+  .pill{padding:6px 10px; border-radius:999px; border:1px solid var(--line); background:var(--panel)}
+  .seg{display:flex; gap:6px}
+  .seg .btn{padding:8px 10px}
+
   .presets{display:flex; gap:8px; flex-wrap:wrap}
   .swatch{width:32px; height:22px; border-radius:6px; border:1px solid var(--line); cursor:pointer}
   .swatch[data-active="1"]{outline:2px solid var(--primary)}
+
   .badge{font-size:11px; color:var(--muted)}
+
 </style>
 </head>
 <body>
@@ -75,13 +81,16 @@
       <div class="title">D‑Day Stream · 小纪念日流 <span class="badge" id="badge"></span></div>
       <div class="grow"></div>
       <div class="toolbar">
-        <div class="field" style="min-width:220px"><input id="q" type="text" placeholder="搜索标题或标签…" /></div>
+        <div class="field" style="min-width:200px"><input id="q" type="text" placeholder="搜索标题或标签… / 回车新建" /></div>
         <select id="sort">
           <option value="upcoming">排序：最近将至</option>
           <option value="startAsc">排序：起始日期↑</option>
           <option value="startDesc">排序：起始日期↓</option>
           <option value="created">排序：创建时间</option>
         </select>
+        <button class="btn" id="btnAdd">新增</button>
+        <button class="btn" id="btnImportExport">导入/导出</button>
+        <button class="btn" id="btnSettings">主题/设置</button>
       </div>
     </div>
   </header>
@@ -89,16 +98,14 @@
   <main class="wrap">
     <section id="quick" class="panel">
       <div class="row two">
-        <div><label>标题</label><input id="tTitle" type="text" placeholder="事件标题（如：初见他／开始健身／搬家到成都）"/></div>
+        <div><label>标题</label><input id="tTitle" type="text" placeholder="例如：遇见 X / 开始健身 / 搬家到成都"/></div>
         <div><label>起始日期</label><input id="tDate" type="date"/></div>
       </div>
       <div class="row">
         <div class="grow"><input id="tTags" type="text" placeholder="标签（逗号分隔，可选）"/></div>
-        <button class="btn primary" id="btnCreate">创建</button>
-        <button class="btn" id="btnImportExport">导入/导出</button>
-        <button class="btn" id="btnSettings">主题/设置</button>
+        <button class="btn primary" id="btnCreate">快速创建</button>
       </div>
-      <div class="hint">提示：本工具为纯前端，数据保存在浏览器；导出 JSON 可备份到 Notion/本地。</div>
+      <div class="hint">提示：也可以在顶部搜索框直接输入，按回车新建。</div>
     </section>
 
     <section id="list" class="grid"></section>
@@ -146,10 +153,15 @@
 
       <div class="panel" style="margin-bottom:10px">
         <div class="row"><strong>主题模式</strong></div>
-        <div class="row" style="gap:6px; flex-wrap:wrap">
+        <div class="seg">
           <button class="btn" data-mode="auto">跟随系统</button>
           <button class="btn" data-mode="light">浅色</button>
           <button class="btn" data-mode="dark">深色</button>
+          <button class="btn" data-mode="schedule">按时间段</button>
+        </div>
+        <div class="two" id="sched" style="margin-top:10px; display:none">
+          <div><label>白天开始</label><input id="dayStart" type="time" value="07:00"></div>
+          <div><label>夜间开始</label><input id="nightStart" type="time" value="19:00"></div>
         </div>
       </div>
 
@@ -204,9 +216,9 @@
   const KEY_EVENTS = 'dday.events.v1';
   const KEY_SETTINGS = 'dday.settings.v1';
 
-  // Default settings (no schedule mode)
+  // Default settings
   const DEF = {
-    theme:{ mode:'auto', preset:'warm-gray', custom:{
+    theme:{ mode:'auto', schedule:{dayStart:'07:00', nightStart:'19:00'}, preset:'warm-gray', custom:{
       light:{bg:'#F7F7F9',panel:'#FFFFFF',text:'#1A1D23',primary:'#6AA7FF',accent:'#E9C77B'},
       dark:{bg:'#0E1116',panel:'#151A23',text:'#E9EDF4',primary:'#77B3FF',accent:'#70E1C8'}
     }},
@@ -231,26 +243,41 @@
   mountPresets();
   render();
   updateBadge();
+  scheduleThemeTick();
 
   // Quick add
   $('#btnCreate').addEventListener('click', onCreate);
+  $('#btnAdd').addEventListener('click', ()=>$('#tTitle').focus());
   $('#tTitle').addEventListener('keydown', e=>{ if(e.key==='Enter') onCreate();});
+  q.addEventListener('keydown', e=>{ if(e.key==='Enter'){ // 创建或搜索
+      const v = q.value.trim();
+      if(v && !events.some(x=>x.title===v)){
+        $('#tTitle').value=v; $('#tDate').focus();
+      }
+      render();
+  }});
 
-  // Search & sort
+  // Sort & search
   sortSel.addEventListener('change', render);
   q.addEventListener('input', render);
 
-  // Dialogs open
+  // Dialogs
   $('#btnSettings').addEventListener('click', ()=>$('#dlgSettings').showModal());
-  $('#btnImportExport').addEventListener('click', ()=>{ $('#ioArea').value = JSON.stringify(events, null, 2); $('#dlgIE').showModal(); });
   document.querySelectorAll('dialog [data-close]').forEach(b=>b.addEventListener('click', e=>{e.target.closest('dialog').close();}));
 
   // Settings controls
-  document.querySelectorAll('#dlgSettings .btn[data-mode]').forEach(btn=>btn.addEventListener('click',()=>{
-    settings.theme.mode = btn.dataset.mode; saveSettings(); applyTheme();
+  document.querySelectorAll('#dlgSettings .seg .btn').forEach(btn=>btn.addEventListener('click',()=>{
+    const m = btn.dataset.mode; settings.theme.mode=m; saveSettings(); applyTheme(); toggleSchedRow();
   }));
+  function toggleSchedRow(){ $('#sched').style.display = settings.theme.mode==='schedule'?'':'none'; }
+  toggleSchedRow();
+  $('#dayStart').value = settings.theme.schedule.dayStart;
+  $('#nightStart').value = settings.theme.schedule.nightStart;
+  $('#dayStart').addEventListener('change', e=>{settings.theme.schedule.dayStart=e.target.value; saveSettings(); scheduleThemeTick(true);});
+  $('#nightStart').addEventListener('change', e=>{settings.theme.schedule.nightStart=e.target.value; saveSettings(); scheduleThemeTick(true);});
 
   // Color pickers
+  const picks = ['LPrimary','LAccent','LBg','LPanel','LText','DPrimary','DAccent','DBg','DPanel','DText'];
   const mapPick = {
     cLPrimary:['light','primary'], cLAccent:['light','accent'], cLBg:['light','bg'], cLPanel:['light','panel'], cLText:['light','text'],
     cDPrimary:['dark','primary'], cDAccent:['dark','accent'], cDBg:['dark','bg'], cDPanel:['dark','panel'], cDText:['dark','text']
@@ -259,7 +286,7 @@
 
   // Milestones
   $('#mile').value = settings.milestones.join(',');
-  $('#btnApply').addEventListener('click', ()=>{
+  $('#btnApply').addEventListener('click', ()=>{ // Apply presets & milestones
     settings.milestones = $('#mile').value.split(',').map(s=>parseInt(s,10)).filter(n=>!isNaN(n) && n>0).sort((a,b)=>a-b);
     saveSettings(); applyTheme(); render();
     $('#dlgSettings').close();
@@ -269,13 +296,18 @@
     if(confirm('确定要清空所有数据（事件与设置）？此操作不可撤销。')){
       localStorage.removeItem(KEY_EVENTS);
       localStorage.removeItem(KEY_SETTINGS);
-      events = []; settings = JSON.parse(JSON.stringify(DEF));
+      events = []; settings = JSON.parse(JSON.stringify({theme:DEF.theme, milestones:DEF.milestones}));
       applyTheme(); mountPresets(); render(); updateBadge();
       alert('已清空。');
     }
   });
 
-  // Import / Export actions
+  // Import / Export
+  $('#btnImportExport').addEventListener('click', ()=>{
+    const dlg = $('#dlgIE');
+    $('#ioArea').value = JSON.stringify(events, null, 2);
+    dlg.showModal();
+  });
   $('#btnExportFile').addEventListener('click', ()=>{
     const blob = new Blob([JSON.stringify(events,null,2)], {type:'application/json'});
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'dday-export.json'; a.click(); URL.revokeObjectURL(a.href);
@@ -320,6 +352,7 @@
     const ms = settings.milestones.slice().sort((a,b)=>a-b);
     const today = startOfLocalDay(new Date());
 
+    // enrich
     const items = events.map(ev=>{
       const start = parseLocalDate(ev.start);
       const days = Math.max(0, Math.floor((today - start)/86400000));
@@ -332,6 +365,7 @@
       return hay.includes(query);
     });
 
+    // sort
     const by = sortSel.value;
     items.sort((a,b)=>{
       if(by==='upcoming'){
@@ -341,14 +375,17 @@
         return a.ev.start.localeCompare(b.ev.start);
       }else if(by==='startDesc'){
         return b.ev.start.localeCompare(a.ev.start);
-      }else{ return (a.ev.createdAt||0)-(b.ev.createdAt||0); }
+      }else{ // created
+        return (a.ev.createdAt||0)-(b.ev.createdAt||0);
+      }
     });
 
+    // render
     listEl.innerHTML='';
     for(const it of items){ listEl.appendChild(renderCard(it)); }
     if(items.length===0){
       const empty = document.createElement('div'); empty.className='panel';
-      empty.innerHTML = '<div class="hint">暂无事件。请在上方输入栏新建，或点击“导入/导出”。</div>';
+      empty.innerHTML = '<div class="hint">暂无事件。使用上方输入栏新建，或点击“导入/导出”加载历史。</div>';
       listEl.appendChild(empty);
     }
   }
@@ -381,12 +418,14 @@
 
   function startOfLocalDay(d){ const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setHours(0,0,0,0); return x; }
   function parseLocalDate(s){ const [y,m,d] = s.split('-').map(Number); return new Date(y, (m||1)-1, d||1); }
+
   function escapeHtml(t){ return t.replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m])); }
   function uuid(){ return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c=>{ const r=Math.random()*16|0, v=c==='x'?r:(r&0x3|0x8); return v.toString(16); }); }
 
   function loadEvents(){ try{ const s = localStorage.getItem(KEY_EVENTS); if(!s) return []; const arr = JSON.parse(s); return Array.isArray(arr)? arr.map(sanitizeEvent) : []; }catch{ return []; } }
   function saveEvents(){ localStorage.setItem(KEY_EVENTS, JSON.stringify(events)); }
-  function loadSettings(){ try{ const s = localStorage.getItem(KEY_SETTINGS); if(!s) return structuredClone(DEF); const obj = JSON.parse(s); const merged = structuredClone(DEF);
+  function loadSettings(){ try{ const s = localStorage.getItem(KEY_SETTINGS); if(!s) return structuredClone(DEF); const obj = JSON.parse(s); // merge defaults
+    const merged = structuredClone(DEF);
     Object.assign(merged, obj);
     merged.theme = Object.assign(structuredClone(DEF.theme), obj.theme||{});
     merged.theme.custom.light = Object.assign(structuredClone(DEF.theme.custom.light), obj.theme?.custom?.light||{});
@@ -410,9 +449,11 @@
     $('#cDPanel').value   = settings.theme.custom.dark.panel;
     $('#cDText').value    = settings.theme.custom.dark.text;
 
+    // Mode
     const mode = resolveMode();
     document.documentElement.setAttribute('data-theme', mode==='dark'?'dark':'light');
 
+    // Apply tokens according to mode
     const pal = mode==='dark'? settings.theme.custom.dark : settings.theme.custom.light;
     const r = document.documentElement;
     r.style.setProperty('--bg', pal.bg);
@@ -427,6 +468,19 @@
   function resolveMode(){
     if(settings.theme.mode==='light') return 'light';
     if(settings.theme.mode==='dark') return 'dark';
+    if(settings.theme.mode==='schedule'){
+      const now = new Date();
+      const t = now.getHours()*60 + now.getMinutes();
+      const [dsH,dsM] = settings.theme.schedule.dayStart.split(':').map(Number);
+      const [nsH,nsM] = settings.theme.schedule.nightStart.split(':').map(Number);
+      const dayMin = dsH*60+dsM, nightMin = nsH*60+nsM;
+      if(dayMin < nightMin){ // day in [dayMin, nightMin)
+        return (t>=dayMin && t<nightMin)? 'light' : 'dark';
+      }else{ // wrap over midnight
+        return (t>=dayMin || t<nightMin)? 'light' : 'dark';
+      }
+    }
+    // auto
     return matchMedia('(prefers-color-scheme: dark)').matches? 'dark':'light';
   }
 
@@ -435,6 +489,12 @@
     const b = h.length===3? h.split('').map(x=>x+x).join('') : h;
     const n = parseInt(b,16); const r=(n>>16)&255, g=(n>>8)&255, bl=n&255;
     return `rgba(${r},${g},${bl},${a})`;
+  }
+
+  function scheduleThemeTick(reset){
+    if(reset && window.__themeTimer){ clearInterval(window.__themeTimer); }
+    window.__themeTimer = setInterval(()=>applyTheme(), 60*1000); // each minute re-evaluate schedule
+    matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
   }
 
   function mountPresets(){
@@ -447,7 +507,9 @@
   }
 
   function updateBadge(){ badge.textContent = `事件 ${events.length} · 预设 ${settings.theme.preset}`; }
+
 })();
 </script>
 </body>
 </html>
+
