@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>D‑Day Stream · 小纪念日流（精简前端·Notion嵌入版）</title>
+<style>
+  :root{
+    /* Light default tokens */
+    --bg:#F7F7F9; --panel:#FFFFFF; --text:#1A1D23; --muted:#6B7380; --line:#E6E8EE;
+    --primary:#6AA7FF; --accent:#E9C77B; --ring: rgba(106,167,255,.35);
+  }
+  [data-theme="dark"]{
+    --bg:#0E1116; --panel:#151A23; --text:#E9EDF4; --muted:#9AA3B6; --line:#222938;
+    --primary:#77B3FF; --accent:#70E1C8; --ring: rgba(119,179,255,.35);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0; background:var(--bg); color:var(--text); font:14px/1.6 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"PingFang SC","Microsoft Yahei"}
+  a{color:inherit}
+  .wrap{max-width:1080px; margin:0 auto; padding:18px 16px 40px}
+  header{position:sticky; top:0; backdrop-filter:saturate(160%) blur(8px); background:color-mix(in srgb,var(--bg) 85%, transparent); z-index:5;}
+  .bar{display:flex; align-items:center; gap:10px; padding:12px 0}
+  .title{font-weight:800; letter-spacing:.2px}
+  .grow{flex:1}
+  input[type="text"],input[type="date"],select,textarea{width:100%; background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:12px; padding:10px 12px; outline:none}
+  textarea{min-height:120px; resize:vertical}
+  .btn{appearance:none; border:1px solid var(--line); background:var(--panel); color:var(--text); padding:10px 14px; border-radius:12px; cursor:pointer}
+  .btn.primary{background:var(--primary); color:#0b1220; border:none; font-weight:700}
+  .btn.ghost{background:transparent}
+  .btn:active{transform:translateY(1px)}
+  .hint{color:var(--muted); font-size:12px}
+  .toolbar{display:flex; gap:8px; align-items:center}
+  .toolbar .field{min-width:200px}
+
+  .grid{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:14px}
+  @media (max-width:1000px){.grid{grid-template-columns:repeat(2,1fr)}}
+  @media (max-width:640px){.grid{grid-template-columns:1fr}}
+
+  .card{position:relative; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px; overflow:hidden}
+  .card.highlight{box-shadow:0 0 0 3px var(--ring) inset, 0 10px 24px rgba(0,0,0,.08)}
+  .card h3{margin:0 0 6px; font-size:16px}
+  .meta{display:flex; gap:10px; flex-wrap:wrap; color:var(--muted); font-size:12px}
+  .chips{display:flex; gap:6px; flex-wrap:wrap; margin-top:6px}
+  .chip{font-size:12px; padding:3px 8px; border-radius:999px; background:color-mix(in srgb, var(--primary) 16%, var(--panel)); border:1px solid var(--line)}
+  .nums{display:flex; gap:12px; align-items:baseline; margin:10px 0 8px}
+  .big{font-size:28px; font-weight:800}
+  .soft{color:var(--muted)}
+  .card .ops{position:absolute; right:8px; top:8px; display:flex; gap:6px}
+  .iconbtn{border:none; background:transparent; padding:6px; border-radius:10px; cursor:pointer}
+  .iconbtn:hover{background:color-mix(in srgb, var(--primary) 12%, transparent)}
+
+  .panel{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px}
+  .row{display:flex; gap:10px; align-items:center; margin-bottom:10px; flex-wrap:wrap}
+  .two{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+  @media (max-width:640px){.two{grid-template-columns:1fr}}
+
+  dialog{border:none; padding:0; border-radius:14px; width:min(680px,92vw); background:var(--panel); color:var(--text)}
+  dialog::backdrop{background:rgba(0,0,0,.35)}
+  .dlg{padding:16px}
+  .dlg .head{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px}
+  .x{border:none; background:transparent; font-size:20px; cursor:pointer; color:var(--muted)}
+
+  .footer{display:flex; justify-content:flex-end; gap:10px; margin-top:12px}
+
+  .presets{display:flex; gap:8px; flex-wrap:wrap}
+  .swatch{width:32px; height:22px; border-radius:6px; border:1px solid var(--line); cursor:pointer}
+  .swatch[data-active="1"]{outline:2px solid var(--primary)}
+  .badge{font-size:11px; color:var(--muted)}
+</style>
+</head>
+<body>
+  <header>
+    <div class="wrap bar">
+      <div class="title">D‑Day Stream · 小纪念日流 <span class="badge" id="badge"></span></div>
+      <div class="grow"></div>
+      <div class="toolbar">
+        <div class="field" style="min-width:220px"><input id="q" type="text" placeholder="搜索标题或标签…" /></div>
+        <select id="sort">
+          <option value="upcoming">排序：最近将至</option>
+          <option value="startAsc">排序：起始日期↑</option>
+          <option value="startDesc">排序：起始日期↓</option>
+          <option value="created">排序：创建时间</option>
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section id="quick" class="panel">
+      <div class="row two">
+        <div><label>标题</label><input id="tTitle" type="text" placeholder="事件标题（如：初见他／开始健身／搬家到成都）"/></div>
+        <div><label>起始日期</label><input id="tDate" type="date"/></div>
+      </div>
+      <div class="row">
+        <div class="grow"><input id="tTags" type="text" placeholder="标签（逗号分隔，可选）"/></div>
+        <button class="btn primary" id="btnCreate">创建</button>
+        <button class="btn" id="btnImportExport">导入/导出</button>
+        <button class="btn" id="btnSettings">主题/设置</button>
+      </div>
+      <div class="hint">提示：本工具为纯前端，数据保存在浏览器；导出 JSON 可备份到 Notion/本地。</div>
+    </section>
+
+    <section id="list" class="grid"></section>
+  </main>
+
+  <!-- 编辑对话框 -->
+  <dialog id="dlgEdit">
+    <div class="dlg">
+      <div class="head"><strong>编辑事件</strong><button class="x" data-close>×</button></div>
+      <div class="two">
+        <div><label>标题</label><input id="eTitle" type="text"></div>
+        <div><label>起始日期</label><input id="eDate" type="date"></div>
+      </div>
+      <div class="row"><label>标签</label><input id="eTags" type="text" placeholder="逗号分隔"></div>
+      <div class="footer">
+        <button class="btn" id="btnDel">删除</button>
+        <div class="grow"></div>
+        <button class="btn" data-close>取消</button>
+        <button class="btn primary" id="btnSave">保存</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- 导入导出对话框 -->
+  <dialog id="dlgIE">
+    <div class="dlg">
+      <div class="head"><strong>导入 / 导出</strong><button class="x" data-close>×</button></div>
+      <div class="row">
+        <textarea id="ioArea" placeholder='粘贴 JSON 或点击下方“导出为文件”'></textarea>
+      </div>
+      <div class="footer">
+        <button class="btn" id="btnExportFile">导出为 .json 文件</button>
+        <div class="grow"></div>
+        <button class="btn" id="btnImport">导入（覆盖/合并）</button>
+        <button class="btn" data-close>关闭</button>
+      </div>
+      <div class="hint">导入时：相同 id 的事件会被覆盖；非法字段将被忽略。</div>
+    </div>
+  </dialog>
+
+  <!-- 设置 / 主题对话框 -->
+  <dialog id="dlgSettings">
+    <div class="dlg">
+      <div class="head"><strong>主题 / 设置</strong><button class="x" data-close>×</button></div>
+
+      <div class="panel" style="margin-bottom:10px">
+        <div class="row"><strong>主题模式</strong></div>
+        <div class="row" style="gap:6px; flex-wrap:wrap">
+          <button class="btn" data-mode="auto">跟随系统</button>
+          <button class="btn" data-mode="light">浅色</button>
+          <button class="btn" data-mode="dark">深色</button>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-bottom:10px">
+        <div class="row"><strong>配色预设</strong></div>
+        <div class="presets" id="presets"></div>
+      </div>
+
+      <div class="panel">
+        <div class="row"><strong>自定义颜色</strong>（浅/深两套）</div>
+        <div class="two">
+          <div>
+            <div class="row"><label>浅 · 主色</label><input type="color" id="cLPrimary" value="#6AA7FF"></div>
+            <div class="row"><label>浅 · 辅色</label><input type="color" id="cLAccent" value="#E9C77B"></div>
+            <div class="row"><label>浅 · 背景</label><input type="color" id="cLBg" value="#F7F7F9"></div>
+            <div class="row"><label>浅 · 面板</label><input type="color" id="cLPanel" value="#FFFFFF"></div>
+            <div class="row"><label>浅 · 文字</label><input type="color" id="cLText" value="#1A1D23"></div>
+          </div>
+          <div>
+            <div class="row"><label>深 · 主色</label><input type="color" id="cDPrimary" value="#77B3FF"></div>
+            <div class="row"><label>深 · 辅色</label><input type="color" id="cDAccent" value="#70E1C8"></div>
+            <div class="row"><label>深 · 背景</label><input type="color" id="cDBg" value="#0E1116"></div>
+            <div class="row"><label>深 · 面板</label><input type="color" id="cDPanel" value="#151A23"></div>
+            <div class="row"><label>深 · 文字</label><input type="color" id="cDText" value="#E9EDF4"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:10px">
+        <div class="row"><strong>纪念节点</strong>（逗号分隔）</div>
+        <input id="mile" type="text" value="100,200,365,500,666,999,1000,1111,1500,2000,2500,3000"/>
+      </div>
+
+      <div class="footer">
+        <button class="btn" id="btnReset">清空全部数据</button>
+        <div class="grow"></div>
+        <button class="btn" data-close>关闭</button>
+        <button class="btn primary" id="btnApply">应用设置</button>
+      </div>
+    </div>
+  </dialog>
+
+<script>
+(function(){
+  const $ = s=>document.querySelector(s);
+  const listEl = $('#list');
+  const q = $('#q');
+  const sortSel = $('#sort');
+  const badge = $('#badge');
+
+  // Storage keys
+  const KEY_EVENTS = 'dday.events.v1';
+  const KEY_SETTINGS = 'dday.settings.v1';
+
+  // Default settings (no schedule mode)
+  const DEF = {
+    theme:{ mode:'auto', preset:'warm-gray', custom:{
+      light:{bg:'#F7F7F9',panel:'#FFFFFF',text:'#1A1D23',primary:'#6AA7FF',accent:'#E9C77B'},
+      dark:{bg:'#0E1116',panel:'#151A23',text:'#E9EDF4',primary:'#77B3FF',accent:'#70E1C8'}
+    }},
+    milestones:[100,200,365,500,666,999,1000,1111,1500,2000,2500,3000]
+  };
+
+  const PRESETS = [
+    {id:'warm-gray', name:'暖灰诗意', light:{bg:'#F7F7F9',panel:'#FFFFFF',text:'#1A1D23',primary:'#6AA7FF',accent:'#E9C77B'}, dark:{bg:'#0E1116',panel:'#151A23',text:'#E9EDF4',primary:'#77B3FF',accent:'#70E1C8'}},
+    {id:'cool-blue', name:'冷蓝雾光', light:{bg:'#F4F7FB',panel:'#FFFFFF',text:'#10141B',primary:'#6AA7FF',accent:'#9AD0F5'}, dark:{bg:'#0A0F17',panel:'#111827',text:'#E6ECF4',primary:'#77B3FF',accent:'#9AD0F5'}},
+    {id:'ink-night', name:'墨黑极夜', light:{bg:'#ECEEF2',panel:'#FFFFFF',text:'#0F1318',primary:'#6AA7FF',accent:'#B9C1C9'}, dark:{bg:'#0A0B0D',panel:'#121417',text:'#E5EAF1',primary:'#9BC0FF',accent:'#7A7F87'}},
+    {id:'forest', name:'墨绿森系', light:{bg:'#F4F7F4',panel:'#FFFFFF',text:'#132015',primary:'#53B38D',accent:'#B7D5C1'}, dark:{bg:'#0F1511',panel:'#17211A',text:'#E6F1EA',primary:'#6ED3AD',accent:'#9AC8AC'}},
+    {id:'cream-gold', name:'奶油米金', light:{bg:'#FAF8F2',panel:'#FFFFFF',text:'#1F1A12',primary:'#E9C77B',accent:'#9EB8D0'}, dark:{bg:'#14120E',panel:'#1B1914',text:'#F3EEE2',primary:'#D9B76D',accent:'#87A9C9'}},
+    {id:'morandi', name:'莫兰迪', light:{bg:'#F4F2F3',panel:'#FFFFFF',text:'#1B1A1C',primary:'#A9B4C2',accent:'#C3A6A0'}, dark:{bg:'#121113',panel:'#19181B',text:'#ECE9EC',primary:'#B7C2CE',accent:'#C9B1AB'}}
+  ];
+
+  // State
+  let events = loadEvents();
+  let settings = loadSettings();
+
+  // Init UI
+  applyTheme();
+  mountPresets();
+  render();
+  updateBadge();
+
+  // Quick add
+  $('#btnCreate').addEventListener('click', onCreate);
+  $('#tTitle').addEventListener('keydown', e=>{ if(e.key==='Enter') onCreate();});
+
+  // Search & sort
+  sortSel.addEventListener('change', render);
+  q.addEventListener('input', render);
+
+  // Dialogs open
+  $('#btnSettings').addEventListener('click', ()=>$('#dlgSettings').showModal());
+  $('#btnImportExport').addEventListener('click', ()=>{ $('#ioArea').value = JSON.stringify(events, null, 2); $('#dlgIE').showModal(); });
+  document.querySelectorAll('dialog [data-close]').forEach(b=>b.addEventListener('click', e=>{e.target.closest('dialog').close();}));
+
+  // Settings controls
+  document.querySelectorAll('#dlgSettings .btn[data-mode]').forEach(btn=>btn.addEventListener('click',()=>{
+    settings.theme.mode = btn.dataset.mode; saveSettings(); applyTheme();
+  }));
+
+  // Color pickers
+  const mapPick = {
+    cLPrimary:['light','primary'], cLAccent:['light','accent'], cLBg:['light','bg'], cLPanel:['light','panel'], cLText:['light','text'],
+    cDPrimary:['dark','primary'], cDAccent:['dark','accent'], cDBg:['dark','bg'], cDPanel:['dark','panel'], cDText:['dark','text']
+  };
+  for(const id in mapPick){ const el = $('#'+id); el.addEventListener('change', e=>{ const [ld, key]=mapPick[id]; settings.theme.custom[ld][key]=e.target.value; saveSettings(); applyTheme(); }); }
+
+  // Milestones
+  $('#mile').value = settings.milestones.join(',');
+  $('#btnApply').addEventListener('click', ()=>{
+    settings.milestones = $('#mile').value.split(',').map(s=>parseInt(s,10)).filter(n=>!isNaN(n) && n>0).sort((a,b)=>a-b);
+    saveSettings(); applyTheme(); render();
+    $('#dlgSettings').close();
+  });
+
+  $('#btnReset').addEventListener('click', ()=>{
+    if(confirm('确定要清空所有数据（事件与设置）？此操作不可撤销。')){
+      localStorage.removeItem(KEY_EVENTS);
+      localStorage.removeItem(KEY_SETTINGS);
+      events = []; settings = JSON.parse(JSON.stringify(DEF));
+      applyTheme(); mountPresets(); render(); updateBadge();
+      alert('已清空。');
+    }
+  });
+
+  // Import / Export actions
+  $('#btnExportFile').addEventListener('click', ()=>{
+    const blob = new Blob([JSON.stringify(events,null,2)], {type:'application/json'});
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'dday-export.json'; a.click(); URL.revokeObjectURL(a.href);
+  });
+  $('#btnImport').addEventListener('click', ()=>{
+    try{
+      const arr = JSON.parse($('#ioArea').value);
+      if(!Array.isArray(arr)) throw new Error('JSON 须为数组');
+      const map = new Map(events.map(e=>[e.id,e]));
+      for(const it of arr){ if(it && typeof it==='object' && it.title && it.start){ it.id = it.id || uuid(); it.createdAt = it.createdAt || Date.now(); map.set(it.id, sanitizeEvent(it)); } }
+      events = Array.from(map.values());
+      saveEvents(); render(); updateBadge(); alert('导入完成。');
+    }catch(err){ alert('导入失败：'+err.message); }
+  });
+
+  // Edit dialog handlers
+  let editingId = null;
+  $('#btnSave').addEventListener('click', ()=>{
+    const eTitle = $('#eTitle').value.trim(); const eDate = $('#eDate').value; const eTags = parseTags($('#eTags').value);
+    if(!eTitle || !eDate){ alert('标题与日期必填'); return; }
+    const idx = events.findIndex(x=>x.id===editingId);
+    if(idx>=0){ events[idx].title=eTitle; events[idx].start=eDate; events[idx].tags=eTags; saveEvents(); render(); $('#dlgEdit').close(); }
+  });
+  $('#btnDel').addEventListener('click', ()=>{
+    if(confirm('确定删除该事件？')){ events = events.filter(x=>x.id!==editingId); saveEvents(); render(); $('#dlgEdit').close(); updateBadge(); }
+  });
+
+  function onCreate(){
+    const title = $('#tTitle').value.trim(); const date = $('#tDate').value; const tags = parseTags($('#tTags').value);
+    if(!title || !date){ alert('请填写标题与起始日期'); return; }
+    const ev = {id:uuid(), title, start:date, tags, createdAt:Date.now()};
+    events.push(sanitizeEvent(ev)); saveEvents();
+    $('#tTitle').value=''; $('#tTags').value=''; $('#tDate').value='';
+    render(); updateBadge();
+  }
+
+  function parseTags(s){ return s? s.split(',').map(x=>x.trim()).filter(Boolean) : []; }
+  function sanitizeEvent(e){ return {id:e.id, title:String(e.title), start:String(e.start), tags:Array.isArray(e.tags)?e.tags.slice(0,12).map(String):[], createdAt:e.createdAt||Date.now()}; }
+
+  function render(){
+    const query = q.value.trim().toLowerCase();
+    const ms = settings.milestones.slice().sort((a,b)=>a-b);
+    const today = startOfLocalDay(new Date());
+
+    const items = events.map(ev=>{
+      const start = parseLocalDate(ev.start);
+      const days = Math.max(0, Math.floor((today - start)/86400000));
+      let next = null; let until = null; let hit = false;
+      for(const m of ms){ if(days===m){ hit=true; next=m; until=0; break; } if(m>days){ next=m; until=m-days; break; } }
+      return {ev, days, next, until, hit};
+    }).filter(it=>{
+      if(!query) return true;
+      const hay = (it.ev.title+" "+it.ev.tags.join(' ')).toLowerCase();
+      return hay.includes(query);
+    });
+
+    const by = sortSel.value;
+    items.sort((a,b)=>{
+      if(by==='upcoming'){
+        const ua = a.until ?? Number.MAX_SAFE_INTEGER; const ub = b.until ?? Number.MAX_SAFE_INTEGER;
+        if(ua!==ub) return ua-ub; return a.days-b.days;
+      }else if(by==='startAsc'){
+        return a.ev.start.localeCompare(b.ev.start);
+      }else if(by==='startDesc'){
+        return b.ev.start.localeCompare(a.ev.start);
+      }else{ return (a.ev.createdAt||0)-(b.ev.createdAt||0); }
+    });
+
+    listEl.innerHTML='';
+    for(const it of items){ listEl.appendChild(renderCard(it)); }
+    if(items.length===0){
+      const empty = document.createElement('div'); empty.className='panel';
+      empty.innerHTML = '<div class="hint">暂无事件。请在上方输入栏新建，或点击“导入/导出”。</div>';
+      listEl.appendChild(empty);
+    }
+  }
+
+  function renderCard(item){
+    const {ev, days, next, until, hit} = item;
+    const el = document.createElement('div'); el.className='card'+(hit?' highlight':'');
+    el.innerHTML = `
+      <div class="ops">
+        <button class="iconbtn" title="编辑" data-act="edit">✎</button>
+        <button class="iconbtn" title="删除" data-act="del">🗑️</button>
+      </div>
+      <h3>${escapeHtml(ev.title)}</h3>
+      <div class="meta">起始：${ev.start}${hit?'<span class="chip" title="命中节点">今天命中节点</span>':''}</div>
+      <div class="nums"><div class="big">相遇第 ${days} 天</div> ${next? `<div class="soft">· 距 ${next} 天节点还剩 ${until} 天</div>`:''}</div>
+      <div class="chips">${(ev.tags||[]).map(t=>`<span class="chip">#${escapeHtml(t)}</span>`).join('')}</div>
+    `;
+
+    el.querySelector('[data-act="edit"]').addEventListener('click', ()=>openEdit(ev.id));
+    el.querySelector('[data-act="del"]').addEventListener('click', ()=>{ if(confirm('确定删除该事件？')){ events = events.filter(x=>x.id!==ev.id); saveEvents(); render(); updateBadge(); } });
+    return el;
+  }
+
+  function openEdit(id){
+    const ev = events.find(x=>x.id===id); if(!ev) return;
+    editingId = id;
+    $('#eTitle').value = ev.title; $('#eDate').value = ev.start; $('#eTags').value = (ev.tags||[]).join(',');
+    $('#dlgEdit').showModal();
+  }
+
+  function startOfLocalDay(d){ const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setHours(0,0,0,0); return x; }
+  function parseLocalDate(s){ const [y,m,d] = s.split('-').map(Number); return new Date(y, (m||1)-1, d||1); }
+  function escapeHtml(t){ return t.replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m])); }
+  function uuid(){ return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c=>{ const r=Math.random()*16|0, v=c==='x'?r:(r&0x3|0x8); return v.toString(16); }); }
+
+  function loadEvents(){ try{ const s = localStorage.getItem(KEY_EVENTS); if(!s) return []; const arr = JSON.parse(s); return Array.isArray(arr)? arr.map(sanitizeEvent) : []; }catch{ return []; } }
+  function saveEvents(){ localStorage.setItem(KEY_EVENTS, JSON.stringify(events)); }
+  function loadSettings(){ try{ const s = localStorage.getItem(KEY_SETTINGS); if(!s) return structuredClone(DEF); const obj = JSON.parse(s); const merged = structuredClone(DEF);
+    Object.assign(merged, obj);
+    merged.theme = Object.assign(structuredClone(DEF.theme), obj.theme||{});
+    merged.theme.custom.light = Object.assign(structuredClone(DEF.theme.custom.light), obj.theme?.custom?.light||{});
+    merged.theme.custom.dark = Object.assign(structuredClone(DEF.theme.custom.dark), obj.theme?.custom?.dark||{});
+    merged.milestones = Array.isArray(obj.milestones)? obj.milestones : DEF.milestones;
+    return merged; }catch{ return structuredClone(DEF); } }
+  function saveSettings(){ localStorage.setItem(KEY_SETTINGS, JSON.stringify(settings)); }
+
+  // THEME
+  function applyTheme(){
+    // Update color pickers to reflect current custom
+    $('#cLPrimary').value = settings.theme.custom.light.primary;
+    $('#cLAccent').value  = settings.theme.custom.light.accent;
+    $('#cLBg').value      = settings.theme.custom.light.bg;
+    $('#cLPanel').value   = settings.theme.custom.light.panel;
+    $('#cLText').value    = settings.theme.custom.light.text;
+
+    $('#cDPrimary').value = settings.theme.custom.dark.primary;
+    $('#cDAccent').value  = settings.theme.custom.dark.accent;
+    $('#cDBg').value      = settings.theme.custom.dark.bg;
+    $('#cDPanel').value   = settings.theme.custom.dark.panel;
+    $('#cDText').value    = settings.theme.custom.dark.text;
+
+    const mode = resolveMode();
+    document.documentElement.setAttribute('data-theme', mode==='dark'?'dark':'light');
+
+    const pal = mode==='dark'? settings.theme.custom.dark : settings.theme.custom.light;
+    const r = document.documentElement;
+    r.style.setProperty('--bg', pal.bg);
+    r.style.setProperty('--panel', pal.panel);
+    r.style.setProperty('--text', pal.text);
+    r.style.setProperty('--primary', pal.primary);
+    r.style.setProperty('--accent', pal.accent);
+    r.style.setProperty('--line', mode==='dark'? '#222938' : '#E6E8EE');
+    r.style.setProperty('--ring', hexToRgba(pal.primary, .35));
+  }
+
+  function resolveMode(){
+    if(settings.theme.mode==='light') return 'light';
+    if(settings.theme.mode==='dark') return 'dark';
+    return matchMedia('(prefers-color-scheme: dark)').matches? 'dark':'light';
+  }
+
+  function hexToRgba(hex, a){
+    const h = hex.replace('#','');
+    const b = h.length===3? h.split('').map(x=>x+x).join('') : h;
+    const n = parseInt(b,16); const r=(n>>16)&255, g=(n>>8)&255, bl=n&255;
+    return `rgba(${r},${g},${bl},${a})`;
+  }
+
+  function mountPresets(){
+    const box = $('#presets'); box.innerHTML='';
+    for(const p of PRESETS){
+      const sw = document.createElement('div'); sw.className='swatch'; sw.title=p.name; sw.style.background=p.light.primary; sw.dataset.active = (settings.theme.preset===p.id? '1':'0');
+      sw.addEventListener('click', ()=>{ settings.theme.preset=p.id; settings.theme.custom.light = {...p.light}; settings.theme.custom.dark = {...p.dark}; saveSettings(); applyTheme(); mountPresets(); });
+      box.appendChild(sw);
+    }
+  }
+
+  function updateBadge(){ badge.textContent = `事件 ${events.length} · 预设 ${settings.theme.preset}`; }
+})();
+</script>
+</body>
+</html>
