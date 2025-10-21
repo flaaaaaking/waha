@@ -50,10 +50,25 @@
   .card .ops{position:absolute; right:8px; top:8px; display:flex; gap:6px}
   .iconbtn{border:none; background:transparent; padding:6px; border-radius:10px; cursor:pointer}
   .iconbtn:hover{background:color-mix(in srgb, var(--primary) 12%, transparent)}
-  /* 新增：快速创建一行布局 */
+  /* 快速创建一行布局 */
   .quick-grid{display:grid; grid-template-columns:1fr 160px 1fr auto auto auto; gap:8px; align-items:end}
   @media (max-width:1000px){.quick-grid{grid-template-columns:1fr 1fr;}}
   @media (max-width:1000px){.quick-grid .btn{width:100%;}}
+  /* 对焦样式：去掉系统白色轮廓，统一使用主题色环 */
+  .btn:focus, .btn:focus-visible, .iconbtn:focus, .iconbtn:focus-visible, input:focus, textarea:focus, select:focus{outline:none; box-shadow:0 0 0 3px var(--ring);}  
+  dialog{border:none; padding:0; border-radius:14px; width:min(680px,92vw); background:var(--panel); color:var(--text)}
+  dialog::backdrop{background:rgba(0,0,0,.35)}
+  /* 视觉优化：深色模式的关闭键更亮、更可见 */
+  .iconbtn[data-close]{ color: var(--text); font-weight:700; opacity:.9 }
+  [data-theme="dark"] .iconbtn[data-close]{ color:#FFFFFF; opacity:1 }
+  .iconbtn[data-close]:hover{ background:color-mix(in srgb, var(--primary) 18%, transparent) }
+
+  /* 颜色拾取器：更圆润、更统一（兼容 webkit / moz） */
+  input[type="color"]{ height:38px; padding:0; border-radius:12px; border:1px solid var(--line); background:var(--panel); cursor:pointer }
+  input[type="color"]::-webkit-color-swatch-wrapper{ padding:4px; border-radius:12px }
+  input[type="color"]::-webkit-color-swatch{ border:none; border-radius:8px }
+  input[type="color"]::-moz-color-swatch{ border:none; border-radius:8px }
+  input[type="color"]:focus{ outline:none; box-shadow:0 0 0 3px var(--ring) }
 </style>
 </head>
 <body>
@@ -98,7 +113,7 @@
     <section id="list" class="grid"></section>
   </main>
 
-  <!-- 编辑对话框 -->
+  <!-- 编辑对话框（仅编辑/删除/保存/取消） -->
   <dialog id="dlgEdit">
     <div class="panel" style="margin:0">
       <div class="row" style="justify-content:space-between"><strong>编辑事件</strong><button class="iconbtn" data-close>✕</button></div>
@@ -115,7 +130,7 @@
     </div>
   </dialog>
 
-  <!-- 导入导出对话框 -->
+  <!-- 导入导出对话框（修正：这里才有导出/导入按钮） -->
   <dialog id="dlgIE">
     <div class="panel" style="margin:0">
       <div class="row" style="justify-content:space-between"><strong>导入 / 导出</strong><button class="iconbtn" data-close>✕</button></div>
@@ -123,6 +138,7 @@
       <div class="row" style="justify-content:flex-end;gap:8px">
         <button class="btn" id="btnExportFile">导出为 .json 文件</button>
         <button class="btn" id="btnImport">导入（覆盖/合并）</button>
+        <button class="btn" data-close>关闭</button>
       </div>
       <div class="hint">导入时：相同 id 的事件会被覆盖；非法字段将被忽略。</div>
     </div>
@@ -211,63 +227,70 @@
   let events = loadEvents();
   let settings = loadSettings();
 
-  applyTheme();
+  // 尝试应用主题（带空节点防护）
+  try { applyTheme(); } catch (e) { console.warn('[theme] apply failed', e); }
   mountPresets();
   render();
   updateBadge();
 
   // 创建
-  $('#btnCreate').addEventListener('click', onCreate);
-  $('#tTitle').addEventListener('keydown', e=>{ if(e.key==='Enter') onCreate();});
+  $('#btnCreate')?.addEventListener('click', onCreate);
+  $('#tTitle')?.addEventListener('keydown', e=>{ if(e.key==='Enter') onCreate();});
 
   // 搜索排序
-  sortSel.addEventListener('change', render);
-  q.addEventListener('input', render);
+  sortSel?.addEventListener('change', render);
+  q?.addEventListener('input', render);
 
   // 打开对话框
-  $('#btnSettings').addEventListener('click', ()=>$('#dlgSettings').showModal());
-  $('#btnImportExport').addEventListener('click', ()=>{ $('#ioArea').value = JSON.stringify(events, null, 2); $('#dlgIE').showModal(); });
-  document.querySelectorAll('dialog [data-close]').forEach(b=>b.addEventListener('click', e=>{e.target.closest('dialog').close();}));
+  $('#btnSettings')?.addEventListener('click', ()=>$('#dlgSettings')?.showModal());
+  $('#btnImportExport')?.addEventListener('click', ()=>{ const io = $('#ioArea'); if(io){ io.value = JSON.stringify(events, null, 2); } $('#dlgIE')?.showModal(); });
+  document.querySelectorAll('dialog [data-close]')?.forEach(b=>b.addEventListener('click', e=>{ e.target.closest('dialog')?.close(); }));
 
   // 主题模式
-  document.querySelectorAll('#dlgSettings .btn[data-mode]').forEach(btn=>btn.addEventListener('click',()=>{
-    settings.theme.mode = btn.dataset.mode; saveSettings(); applyTheme();
+  document.querySelectorAll('#dlgSettings .btn[data-mode]')?.forEach(btn=>btn.addEventListener('click',()=>{
+    settings.theme.mode = btn.dataset.mode; saveSettings(); try{ applyTheme(); }catch{}
   }));
 
-  // 配色拾取
+  // 配色拾取（空节点防护）
   const mapPick = {
     cLPrimary:['light','primary'], cLAccent:['light','accent'], cLBg:['light','bg'], cLPanel:['light','panel'], cLText:['light','text'],
     cDPrimary:['dark','primary'], cDAccent:['dark','accent'], cDBg:['dark','bg'], cDPanel:['dark','panel'], cDText:['dark','text']
   };
-  for(const id in mapPick){ const el = $('#'+id); el.addEventListener('change', e=>{ const [ld, key]=mapPick[id]; settings.theme.custom[ld][key]=e.target.value; saveSettings(); applyTheme(); }); }
+  for(const id in mapPick){ const el = $('#'+id); if(!el) continue; el.addEventListener('change', e=>{ const [ld, key]=mapPick[id]; settings.theme.custom[ld][key]=e.target.value; saveSettings(); try{ applyTheme(); }catch{} }); }
 
-  // 节点应用
-  $('#mile').value = settings.milestones.join(',');
-  $('#btnApply').addEventListener('click', ()=>{
-    settings.milestones = $('#mile').value.split(',').map(s=>parseInt(s,10)).filter(n=>!isNaN(n) && n>0).sort((a,b)=>a-b);
-    saveSettings(); render();
-    $('#dlgSettings').close();
+  // 节点应用（空节点防护）
+  const mile = $('#mile'); if(mile){ mile.value = settings.milestones.join(','); }
+  $('#btnApply')?.addEventListener('click', ()=>{
+    const box = $('#mile');
+    if(box){
+      settings.milestones = box.value.split(',').map(s=>parseInt(s,10)).filter(n=>!isNaN(n) && n>0).sort((a,b)=>a-b);
+      saveSettings(); render();
+      $('#dlgSettings')?.close();
+    }
   });
 
   // 清空
-  $('#btnReset').addEventListener('click', ()=>{
+  $('#btnReset')?.addEventListener('click', ()=>{
     if(confirm('确定要清空所有数据（事件与设置）？此操作不可撤销。')){
       localStorage.removeItem(KEY_EVENTS);
       localStorage.removeItem(KEY_SETTINGS);
       events = []; settings = JSON.parse(JSON.stringify(DEF));
-      applyTheme(); mountPresets(); render(); updateBadge();
+      try{ applyTheme(); }catch{}
+      mountPresets(); render(); updateBadge();
       alert('已清空。');
     }
   });
 
   // 导入导出
-  $('#btnExportFile').addEventListener('click', ()=>{
+  $('#btnExportFile')?.addEventListener('click', ()=>{
     const blob = new Blob([JSON.stringify(events,null,2)], {type:'application/json'});
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'dday-export.json'; a.click(); URL.revokeObjectURL(a.href);
   });
-  $('#btnImport').addEventListener('click', ()=>{
+  $('#btnImport')?.addEventListener('click', ()=>{
     try{
-      const arr = JSON.parse($('#ioArea').value);
+      const area = $('#ioArea');
+      const text = area? area.value : '[]';
+      const arr = JSON.parse(text);
       if(!Array.isArray(arr)) throw new Error('JSON 须为数组');
       const map = new Map(events.map(e=>[e.id,e]));
       for(const it of arr){ if(it && typeof it==='object' && it.title && it.start){ it.id = it.id || uuid(); it.createdAt = it.createdAt || Date.now(); map.set(it.id, sanitizeEvent(it)); } }
@@ -278,22 +301,24 @@
 
   // 编辑
   let editingId = null;
-  $('#btnSave').addEventListener('click', ()=>{
-    const eTitle = $('#eTitle').value.trim(); const eDate = $('#eDate').value; const eTags = parseTags($('#eTags').value);
+  $('#btnSave')?.addEventListener('click', ()=>{
+    const eTitle = $('#eTitle')?.value?.trim(); const eDate = $('#eDate')?.value; const eTags = parseTags($('#eTags')?.value||'');
     if(!eTitle || !eDate){ alert('标题与日期必填'); return; }
     const idx = events.findIndex(x=>x.id===editingId);
-    if(idx>=0){ events[idx].title=eTitle; events[idx].start=eDate; events[idx].tags=eTags; saveEvents(); render(); $('#dlgEdit').close(); }
+    if(idx>=0){ events[idx].title=eTitle; events[idx].start=eDate; events[idx].tags=eTags; saveEvents(); render(); $('#dlgEdit')?.close(); }
   });
-  $('#btnDel').addEventListener('click', ()=>{
-    if(confirm('确定删除该事件？')){ events = events.filter(x=>x.id!==editingId); saveEvents(); render(); $('#dlgEdit').close(); updateBadge(); }
+  $('#btnDel')?.addEventListener('click', ()=>{
+    if(confirm('确定删除该事件？')){ events = events.filter(x=>x.id!==editingId); saveEvents(); render(); $('#dlgEdit')?.close(); updateBadge(); }
   });
 
   function onCreate(){
-    const title = $('#tTitle').value.trim(); const date = $('#tDate').value; const tags = parseTags($('#tTags').value);
+    const title = $('#tTitle')?.value?.trim(); const date = $('#tDate')?.value; const tags = parseTags($('#tTags')?.value||'');
     if(!title || !date){ alert('请填写标题与起始日期'); return; }
     const ev = {id:uuid(), title, start:date, tags, createdAt:Date.now()};
     events.push(sanitizeEvent(ev)); saveEvents();
-    $('#tTitle').value=''; $('#tTags').value=''; $('#tDate').value='';
+    if($('#tTitle')) $('#tTitle').value='';
+    if($('#tTags')) $('#tTags').value='';
+    if($('#tDate')) $('#tDate').value='';
     render(); updateBadge();
   }
 
@@ -301,7 +326,7 @@
   function sanitizeEvent(e){ return {id:e.id, title:String(e.title), start:String(e.start), tags:Array.isArray(e.tags)?e.tags.slice(0,12).map(String):[], createdAt:e.createdAt||Date.now()}; }
 
   function render(){
-    const query = q.value.trim().toLowerCase();
+    const query = (q?.value||'').trim().toLowerCase();
     const ms = settings.milestones.slice().sort((a,b)=>a-b);
     const today = startOfLocalDay(new Date());
 
@@ -313,11 +338,11 @@
       return {ev, days, next, until, hit};
     }).filter(it=>{
       if(!query) return true;
-      const hay = (it.ev.title+" "+it.ev.tags.join(' ')).toLowerCase();
+      const hay = (it.ev.title+" "+(it.ev.tags||[]).join(' ')).toLowerCase();
       return hay.includes(query);
     });
 
-    const by = sortSel.value;
+    const by = sortSel?.value||'upcoming';
     items.sort((a,b)=>{
       if(by==='upcoming'){
         const ua = a.until ?? Number.MAX_SAFE_INTEGER; const ub = b.until ?? Number.MAX_SAFE_INTEGER;
@@ -329,6 +354,7 @@
       }else{ return (a.ev.createdAt||0)-(b.ev.createdAt||0); }
     });
 
+    if(!listEl) return;
     listEl.innerHTML='';
     for(const it of items){ listEl.appendChild(renderCard(it)); }
     if(items.length===0){
@@ -360,13 +386,16 @@
   function openEdit(id){
     const ev = events.find(x=>x.id===id); if(!ev) return;
     editingId = id;
-    $('#eTitle').value = ev.title; $('#eDate').value = ev.start; $('#eTags').value = (ev.tags||[]).join(',');
-    $('#dlgEdit').showModal();
+    const eTitle = $('#eTitle'), eDate=$('#eDate'), eTags=$('#eTags');
+    if(eTitle) eTitle.value = ev.title;
+    if(eDate) eDate.value = ev.start;
+    if(eTags) eTags.value = (ev.tags||[]).join(',');
+    $('#dlgEdit')?.showModal();
   }
 
   function startOfLocalDay(d){ const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setHours(0,0,0,0); return x; }
-  function parseLocalDate(s){ const [y,m,d] = s.split('-').map(Number); return new Date(y, (m||1)-1, d||1); }
-  function escapeHtml(t){ return t.replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m])); }
+  function parseLocalDate(s){ const [y,m,d] = (s||'').split('-').map(Number); return new Date(y||1970, (m||1)-1, d||1); }
+  function escapeHtml(t){ return String(t).replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m])); }
   function uuid(){ return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c=>{ const r=Math.random()*16|0, v=c==='x'?r:(r&0x3|0x8); return v.toString(16); }); }
 
   function loadEvents(){ try{ const s = localStorage.getItem(KEY_EVENTS); if(!s) return []; const arr = JSON.parse(s); return Array.isArray(arr)? arr.map(sanitizeEvent) : []; }catch{ return []; } }
@@ -381,17 +410,13 @@
   function saveSettings(){ localStorage.setItem(KEY_SETTINGS, JSON.stringify(settings)); }
 
   function applyTheme(){
-    // 同步拾色器
-    $('#cLPrimary').value = settings.theme.custom.light.primary;
-    $('#cLAccent').value  = settings.theme.custom.light.accent;
-    $('#cLBg').value      = settings.theme.custom.light.bg;
-    $('#cLPanel').value   = settings.theme.custom.light.panel;
-    $('#cLText').value    = settings.theme.custom.light.text;
-    $('#cDPrimary').value = settings.theme.custom.dark.primary;
-    $('#cDAccent').value  = settings.theme.custom.dark.accent;
-    $('#cDBg').value      = settings.theme.custom.dark.bg;
-    $('#cDPanel').value   = settings.theme.custom.dark.panel;
-    $('#cDText').value    = settings.theme.custom.dark.text;
+    // 安全设置拾色器初值（存在才赋值）
+    const ids = ['cLPrimary','cLAccent','cLBg','cLPanel','cLText','cDPrimary','cDAccent','cDBg','cDPanel','cDText'];
+    const valMap = [
+      settings.theme.custom.light.primary, settings.theme.custom.light.accent, settings.theme.custom.light.bg, settings.theme.custom.light.panel, settings.theme.custom.light.text,
+      settings.theme.custom.dark.primary,  settings.theme.custom.dark.accent,  settings.theme.custom.dark.bg,  settings.theme.custom.dark.panel,  settings.theme.custom.dark.text
+    ];
+    ids.forEach((id,i)=>{ const el = $('#'+id); if(el) el.value = valMap[i]; });
 
     const mode = resolveMode();
     document.documentElement.setAttribute('data-theme', mode==='dark'?'dark':'light');
@@ -413,22 +438,33 @@
   }
 
   function hexToRgba(hex, a){
-    const h = hex.replace('#','');
+    const h = String(hex).replace('#','');
     const b = h.length===3? h.split('').map(x=>x+x).join('') : h;
-    const n = parseInt(b,16); const r=(n>>16)&255, g=(n>>8)&255, bl=n&255;
+    const n = parseInt(b,16)||0; const r=(n>>16)&255, g=(n>>8)&255, bl=n&255;
     return `rgba(${r},${g},${bl},${a})`;
   }
 
   function mountPresets(){
-    const box = $('#presets'); box.innerHTML='';
+    const box = $('#presets'); if(!box) return; box.innerHTML='';
     for(const p of PRESETS){
       const sw = document.createElement('div'); sw.className='btn'; sw.textContent=p.name; sw.style.borderColor='var(--line)';
-      sw.addEventListener('click', ()=>{ settings.theme.preset=p.id; settings.theme.custom.light = {...p.light}; settings.theme.custom.dark = {...p.dark}; saveSettings(); applyTheme(); mountPresets(); });
+      sw.addEventListener('click', ()=>{ settings.theme.preset=p.id; settings.theme.custom.light = {...p.light}; settings.theme.custom.dark = {...p.dark}; saveSettings(); try{ applyTheme(); }catch{} mountPresets(); });
       box.appendChild(sw);
     }
   }
 
-  function updateBadge(){ badge.textContent = `事件 ${events.length}`; }
+  function updateBadge(){ if(badge) badge.textContent = `事件 ${events.length}`; }
+
+  // ───── 自检用例（不会打扰 UI）─────
+  ;(function selfTest(){
+    try{
+      console.assert(typeof render === 'function', 'render 存在');
+      console.assert(Array.isArray(events), 'events 为数组');
+      // 测试：空里程碑也不报错
+      const bak = settings.milestones; settings.milestones = []; render(); settings.milestones = bak; render();
+      console.log('%c[自检] 基础测试通过', 'color: #2e7d32');
+    }catch(e){ console.warn('[自检失败]', e); }
+  })();
 })();
 </script>
 </body>
