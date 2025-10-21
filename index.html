@@ -3,10 +3,9 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>D‑Day Stream · 小纪念日流（精简前端·Notion嵌入版）</title>
+<title>D‑Day Stream · 小纪念日流（Notion 嵌入友好版）</title>
 <style>
   :root{
-    /* Light default tokens */
     --bg:#F7F7F9; --panel:#FFFFFF; --text:#1A1D23; --muted:#6B7380; --line:#E6E8EE;
     --primary:#6AA7FF; --accent:#E9C77B; --ring: rgba(106,167,255,.35);
   }
@@ -15,67 +14,51 @@
     --primary:#77B3FF; --accent:#70E1C8; --ring: rgba(119,179,255,.35);
   }
   *{box-sizing:border-box}
-  html,body{height:100%}
   body{margin:0; background:var(--bg); color:var(--text); font:14px/1.6 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"PingFang SC","Microsoft Yahei"}
   a{color:inherit}
-  .wrap{max-width:1080px; margin:0 auto; padding:18px 16px 40px}
+  .wrap{max-width:980px; margin:0 auto; padding:16px}
   header{position:sticky; top:0; backdrop-filter:saturate(160%) blur(8px); background:color-mix(in srgb,var(--bg) 85%, transparent); z-index:5;}
-  .bar{display:flex; align-items:center; gap:10px; padding:12px 0}
+  .bar{display:flex; align-items:center; gap:10px; padding:10px 0}
   .title{font-weight:800; letter-spacing:.2px}
   .grow{flex:1}
   input[type="text"],input[type="date"],select,textarea{width:100%; background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:12px; padding:10px 12px; outline:none}
-  textarea{min-height:120px; resize:vertical}
   .btn{appearance:none; border:1px solid var(--line); background:var(--panel); color:var(--text); padding:10px 14px; border-radius:12px; cursor:pointer}
   .btn.primary{background:var(--primary); color:#0b1220; border:none; font-weight:700}
-  .btn.ghost{background:transparent}
   .btn:active{transform:translateY(1px)}
   .hint{color:var(--muted); font-size:12px}
   .toolbar{display:flex; gap:8px; align-items:center}
-  .toolbar .field{min-width:200px}
+  .toolbar .field{min-width:220px}
 
-  .grid{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:14px}
+  .grid{display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:12px}
   @media (max-width:1000px){.grid{grid-template-columns:repeat(2,1fr)}}
   @media (max-width:640px){.grid{grid-template-columns:1fr}}
 
-  .card{position:relative; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px; overflow:hidden}
+  .panel{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:12px}
+  .row{display:flex; gap:8px; align-items:center; margin-bottom:10px; flex-wrap:wrap}
+  .two{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+  @media (max-width:640px){.two{grid-template-columns:1fr}}
+
+  .card{position:relative; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:12px}
   .card.highlight{box-shadow:0 0 0 3px var(--ring) inset, 0 10px 24px rgba(0,0,0,.08)}
   .card h3{margin:0 0 6px; font-size:16px}
   .meta{display:flex; gap:10px; flex-wrap:wrap; color:var(--muted); font-size:12px}
   .chips{display:flex; gap:6px; flex-wrap:wrap; margin-top:6px}
   .chip{font-size:12px; padding:3px 8px; border-radius:999px; background:color-mix(in srgb, var(--primary) 16%, var(--panel)); border:1px solid var(--line)}
-  .nums{display:flex; gap:12px; align-items:baseline; margin:10px 0 8px}
-  .big{font-size:28px; font-weight:800}
+  .nums{display:flex; gap:12px; align-items:baseline; margin:8px 0 6px}
+  .big{font-size:26px; font-weight:800}
   .soft{color:var(--muted)}
   .card .ops{position:absolute; right:8px; top:8px; display:flex; gap:6px}
   .iconbtn{border:none; background:transparent; padding:6px; border-radius:10px; cursor:pointer}
   .iconbtn:hover{background:color-mix(in srgb, var(--primary) 12%, transparent)}
-
-  .panel{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px}
-  .row{display:flex; gap:10px; align-items:center; margin-bottom:10px; flex-wrap:wrap}
-  .two{display:grid; grid-template-columns:1fr 1fr; gap:10px}
-  @media (max-width:640px){.two{grid-template-columns:1fr}}
-
-  dialog{border:none; padding:0; border-radius:14px; width:min(680px,92vw); background:var(--panel); color:var(--text)}
-  dialog::backdrop{background:rgba(0,0,0,.35)}
-  .dlg{padding:16px}
-  .dlg .head{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px}
-  .x{border:none; background:transparent; font-size:20px; cursor:pointer; color:var(--muted)}
-
-  .footer{display:flex; justify-content:flex-end; gap:10px; margin-top:12px}
-
-  .presets{display:flex; gap:8px; flex-wrap:wrap}
-  .swatch{width:32px; height:22px; border-radius:6px; border:1px solid var(--line); cursor:pointer}
-  .swatch[data-active="1"]{outline:2px solid var(--primary)}
-  .badge{font-size:11px; color:var(--muted)}
 </style>
 </head>
 <body>
   <header>
     <div class="wrap bar">
-      <div class="title">D‑Day Stream · 小纪念日流 <span class="badge" id="badge"></span></div>
+      <div class="title">D‑Day Stream · 小纪念日流 <span id="badge" style="font-size:11px;color:var(--muted)"></span></div>
       <div class="grow"></div>
       <div class="toolbar">
-        <div class="field" style="min-width:220px"><input id="q" type="text" placeholder="搜索标题或标签…" /></div>
+        <div class="field"><input id="q" type="text" placeholder="搜索标题或标签…" /></div>
         <select id="sort">
           <option value="upcoming">排序：最近将至</option>
           <option value="startAsc">排序：起始日期↑</option>
@@ -98,7 +81,7 @@
         <button class="btn" id="btnImportExport">导入/导出</button>
         <button class="btn" id="btnSettings">主题/设置</button>
       </div>
-      <div class="hint">提示：本工具为纯前端，数据保存在浏览器；导出 JSON 可备份到 Notion/本地。</div>
+      <div class="hint">纯前端 · 数据保存在浏览器 · 可导出 JSON 备份到 Notion</div>
     </section>
 
     <section id="list" class="grid"></section>
@@ -106,16 +89,15 @@
 
   <!-- 编辑对话框 -->
   <dialog id="dlgEdit">
-    <div class="dlg">
-      <div class="head"><strong>编辑事件</strong><button class="x" data-close>×</button></div>
+    <div class="panel" style="margin:0">
+      <div class="row" style="justify-content:space-between"><strong>编辑事件</strong><button class="iconbtn" data-close>✕</button></div>
       <div class="two">
         <div><label>标题</label><input id="eTitle" type="text"></div>
         <div><label>起始日期</label><input id="eDate" type="date"></div>
       </div>
       <div class="row"><label>标签</label><input id="eTags" type="text" placeholder="逗号分隔"></div>
-      <div class="footer">
+      <div class="row" style="justify-content:flex-end;gap:8px">
         <button class="btn" id="btnDel">删除</button>
-        <div class="grow"></div>
         <button class="btn" data-close>取消</button>
         <button class="btn primary" id="btnSave">保存</button>
       </div>
@@ -124,25 +106,21 @@
 
   <!-- 导入导出对话框 -->
   <dialog id="dlgIE">
-    <div class="dlg">
-      <div class="head"><strong>导入 / 导出</strong><button class="x" data-close>×</button></div>
-      <div class="row">
-        <textarea id="ioArea" placeholder='粘贴 JSON 或点击下方“导出为文件”'></textarea>
-      </div>
-      <div class="footer">
+    <div class="panel" style="margin:0">
+      <div class="row" style="justify-content:space-between"><strong>导入 / 导出</strong><button class="iconbtn" data-close>✕</button></div>
+      <div class="row"><textarea id="ioArea" style="width:100%;min-height:200px" placeholder='粘贴 JSON 或点击下方“导出为文件”'></textarea></div>
+      <div class="row" style="justify-content:flex-end;gap:8px">
         <button class="btn" id="btnExportFile">导出为 .json 文件</button>
-        <div class="grow"></div>
         <button class="btn" id="btnImport">导入（覆盖/合并）</button>
-        <button class="btn" data-close>关闭</button>
       </div>
       <div class="hint">导入时：相同 id 的事件会被覆盖；非法字段将被忽略。</div>
     </div>
   </dialog>
 
-  <!-- 设置 / 主题对话框 -->
+  <!-- 设置 / 主题对话框（去掉按时间段） -->
   <dialog id="dlgSettings">
-    <div class="dlg">
-      <div class="head"><strong>主题 / 设置</strong><button class="x" data-close>×</button></div>
+    <div class="panel" style="margin:0">
+      <div class="row" style="justify-content:space-between"><strong>主题 / 设置</strong><button class="iconbtn" data-close>✕</button></div>
 
       <div class="panel" style="margin-bottom:10px">
         <div class="row"><strong>主题模式</strong></div>
@@ -155,7 +133,7 @@
 
       <div class="panel" style="margin-bottom:10px">
         <div class="row"><strong>配色预设</strong></div>
-        <div class="presets" id="presets"></div>
+        <div class="row" id="presets" style="gap:8px; flex-wrap:wrap"></div>
       </div>
 
       <div class="panel">
@@ -183,9 +161,8 @@
         <input id="mile" type="text" value="100,200,365,500,666,999,1000,1111,1500,2000,2500,3000"/>
       </div>
 
-      <div class="footer">
+      <div class="row" style="justify-content:flex-end;gap:8px;margin-top:10px">
         <button class="btn" id="btnReset">清空全部数据</button>
-        <div class="grow"></div>
         <button class="btn" data-close>关闭</button>
         <button class="btn primary" id="btnApply">应用设置</button>
       </div>
@@ -200,11 +177,9 @@
   const sortSel = $('#sort');
   const badge = $('#badge');
 
-  // Storage keys
   const KEY_EVENTS = 'dday.events.v1';
   const KEY_SETTINGS = 'dday.settings.v1';
 
-  // Default settings (no schedule mode)
   const DEF = {
     theme:{ mode:'auto', preset:'warm-gray', custom:{
       light:{bg:'#F7F7F9',panel:'#FFFFFF',text:'#1A1D23',primary:'#6AA7FF',accent:'#E9C77B'},
@@ -222,49 +197,48 @@
     {id:'morandi', name:'莫兰迪', light:{bg:'#F4F2F3',panel:'#FFFFFF',text:'#1B1A1C',primary:'#A9B4C2',accent:'#C3A6A0'}, dark:{bg:'#121113',panel:'#19181B',text:'#ECE9EC',primary:'#B7C2CE',accent:'#C9B1AB'}}
   ];
 
-  // State
   let events = loadEvents();
   let settings = loadSettings();
 
-  // Init UI
   applyTheme();
   mountPresets();
   render();
   updateBadge();
 
-  // Quick add
+  // 创建
   $('#btnCreate').addEventListener('click', onCreate);
   $('#tTitle').addEventListener('keydown', e=>{ if(e.key==='Enter') onCreate();});
 
-  // Search & sort
+  // 搜索排序
   sortSel.addEventListener('change', render);
   q.addEventListener('input', render);
 
-  // Dialogs open
+  // 打开对话框
   $('#btnSettings').addEventListener('click', ()=>$('#dlgSettings').showModal());
   $('#btnImportExport').addEventListener('click', ()=>{ $('#ioArea').value = JSON.stringify(events, null, 2); $('#dlgIE').showModal(); });
   document.querySelectorAll('dialog [data-close]').forEach(b=>b.addEventListener('click', e=>{e.target.closest('dialog').close();}));
 
-  // Settings controls
+  // 主题模式
   document.querySelectorAll('#dlgSettings .btn[data-mode]').forEach(btn=>btn.addEventListener('click',()=>{
     settings.theme.mode = btn.dataset.mode; saveSettings(); applyTheme();
   }));
 
-  // Color pickers
+  // 配色拾取
   const mapPick = {
     cLPrimary:['light','primary'], cLAccent:['light','accent'], cLBg:['light','bg'], cLPanel:['light','panel'], cLText:['light','text'],
     cDPrimary:['dark','primary'], cDAccent:['dark','accent'], cDBg:['dark','bg'], cDPanel:['dark','panel'], cDText:['dark','text']
   };
   for(const id in mapPick){ const el = $('#'+id); el.addEventListener('change', e=>{ const [ld, key]=mapPick[id]; settings.theme.custom[ld][key]=e.target.value; saveSettings(); applyTheme(); }); }
 
-  // Milestones
+  // 节点应用
   $('#mile').value = settings.milestones.join(',');
   $('#btnApply').addEventListener('click', ()=>{
     settings.milestones = $('#mile').value.split(',').map(s=>parseInt(s,10)).filter(n=>!isNaN(n) && n>0).sort((a,b)=>a-b);
-    saveSettings(); applyTheme(); render();
+    saveSettings(); render();
     $('#dlgSettings').close();
   });
 
+  // 清空
   $('#btnReset').addEventListener('click', ()=>{
     if(confirm('确定要清空所有数据（事件与设置）？此操作不可撤销。')){
       localStorage.removeItem(KEY_EVENTS);
@@ -275,7 +249,7 @@
     }
   });
 
-  // Import / Export actions
+  // 导入导出
   $('#btnExportFile').addEventListener('click', ()=>{
     const blob = new Blob([JSON.stringify(events,null,2)], {type:'application/json'});
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'dday-export.json'; a.click(); URL.revokeObjectURL(a.href);
@@ -291,7 +265,7 @@
     }catch(err){ alert('导入失败：'+err.message); }
   });
 
-  // Edit dialog handlers
+  // 编辑
   let editingId = null;
   $('#btnSave').addEventListener('click', ()=>{
     const eTitle = $('#eTitle').value.trim(); const eDate = $('#eDate').value; const eTags = parseTags($('#eTags').value);
@@ -395,15 +369,13 @@
     return merged; }catch{ return structuredClone(DEF); } }
   function saveSettings(){ localStorage.setItem(KEY_SETTINGS, JSON.stringify(settings)); }
 
-  // THEME
   function applyTheme(){
-    // Update color pickers to reflect current custom
+    // 同步拾色器
     $('#cLPrimary').value = settings.theme.custom.light.primary;
     $('#cLAccent').value  = settings.theme.custom.light.accent;
     $('#cLBg').value      = settings.theme.custom.light.bg;
     $('#cLPanel').value   = settings.theme.custom.light.panel;
     $('#cLText').value    = settings.theme.custom.light.text;
-
     $('#cDPrimary').value = settings.theme.custom.dark.primary;
     $('#cDAccent').value  = settings.theme.custom.dark.accent;
     $('#cDBg').value      = settings.theme.custom.dark.bg;
@@ -412,7 +384,6 @@
 
     const mode = resolveMode();
     document.documentElement.setAttribute('data-theme', mode==='dark'?'dark':'light');
-
     const pal = mode==='dark'? settings.theme.custom.dark : settings.theme.custom.light;
     const r = document.documentElement;
     r.style.setProperty('--bg', pal.bg);
@@ -440,13 +411,13 @@
   function mountPresets(){
     const box = $('#presets'); box.innerHTML='';
     for(const p of PRESETS){
-      const sw = document.createElement('div'); sw.className='swatch'; sw.title=p.name; sw.style.background=p.light.primary; sw.dataset.active = (settings.theme.preset===p.id? '1':'0');
+      const sw = document.createElement('div'); sw.className='btn'; sw.textContent=p.name; sw.style.borderColor='var(--line)';
       sw.addEventListener('click', ()=>{ settings.theme.preset=p.id; settings.theme.custom.light = {...p.light}; settings.theme.custom.dark = {...p.dark}; saveSettings(); applyTheme(); mountPresets(); });
       box.appendChild(sw);
     }
   }
 
-  function updateBadge(){ badge.textContent = `事件 ${events.length} · 预设 ${settings.theme.preset}`; }
+  function updateBadge(){ badge.textContent = `事件 ${events.length}`; }
 })();
 </script>
 </body>
