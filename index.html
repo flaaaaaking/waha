@@ -50,6 +50,10 @@
   .card .ops{position:absolute; right:8px; top:8px; display:flex; gap:6px}
   .iconbtn{border:none; background:transparent; padding:6px; border-radius:10px; cursor:pointer}
   .iconbtn:hover{background:color-mix(in srgb, var(--primary) 12%, transparent)}
+  /* 新增：快速创建一行布局 */
+  .quick-grid{display:grid; grid-template-columns:1fr 160px 1fr auto auto auto; gap:8px; align-items:end}
+  @media (max-width:1000px){.quick-grid{grid-template-columns:1fr 1fr;}}
+  @media (max-width:1000px){.quick-grid .btn{width:100%;}}
 </style>
 </head>
 <body>
@@ -71,12 +75,19 @@
 
   <main class="wrap">
     <section id="quick" class="panel">
-      <div class="row two">
-        <div><label>标题</label><input id="tTitle" type="text" placeholder="事件标题（如：初见他／开始健身／搬家到成都）"/></div>
-        <div><label>起始日期</label><input id="tDate" type="date"/></div>
-      </div>
-      <div class="row">
-        <div class="grow"><input id="tTags" type="text" placeholder="标签（逗号分隔，可选）"/></div>
+      <div class="quick-grid">
+        <div>
+          <label>标题</label>
+          <input id="tTitle" type="text" placeholder="事件标题（如：初见他／开始健身／搬家到成都）"/>
+        </div>
+        <div>
+          <label>起始日期</label>
+          <input id="tDate" type="date"/>
+        </div>
+        <div>
+          <label>标签</label>
+          <input id="tTags" type="text" placeholder="标签（逗号分隔，可选）"/>
+        </div>
         <button class="btn primary" id="btnCreate">创建</button>
         <button class="btn" id="btnImportExport">导入/导出</button>
         <button class="btn" id="btnSettings">主题/设置</button>
@@ -422,4 +433,3 @@
 </script>
 </body>
 </html>
-
